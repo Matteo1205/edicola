@@ -1,0 +1,8 @@
+.env
+Edicola.pdf
+schema.sql
+.DS_Store
+README.md
+venv/
+info.md
+consegna.txt
