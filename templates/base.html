@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Gestione Edicola{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<nav>
+    <div class="nav-brand">🗞️ Edicola</div>
+    <ul>
+        <li><a href="{{ url_for('inventario.index') }}" {% if request.blueprint == 'inventario' %}class="active"{% endif %}>Inventario</a></li>
+        <li><a href="{{ url_for('prodotti.lista') }}" {% if request.blueprint == 'prodotti' %}class="active"{% endif %}>Prodotti</a></li>
+        <li><a href="{{ url_for('vendite.nuova') }}" {% if request.blueprint == 'vendite' %}class="active"{% endif %}>Vendita</a></li>
+        <li><a href="{{ url_for('report.index') }}" {% if request.blueprint == 'report' %}class="active"{% endif %}>Report</a></li>
+    </ul>
+</nav>
+
+<main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</main>
+
+<footer>
+    <p>Gestione Edicola &copy; {{ now.year if now else 2025 }}</p>
+</footer>
+
+</body>
+</html>

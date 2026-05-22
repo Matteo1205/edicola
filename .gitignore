@@ -1,8 +1,11 @@
 .env
-Edicola.pdf
-schema.sql
 .DS_Store
-README.md
+.git
+__pycache__/
+routes/__pycache__/
 venv/
 info.md
 consegna.txt
+Edicola.pdf
+schema.sql
+README.md
