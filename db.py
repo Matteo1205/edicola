@@ -3,6 +3,7 @@
 import re
 import psycopg2
 import psycopg2.extras
+from contextlib import contextmanager
 from datetime import datetime
 from config import Config
 from decimal import Decimal, ROUND_HALF_UP
@@ -11,8 +12,13 @@ from decimal import Decimal, ROUND_HALF_UP
 # --- UTILITY ---
 # funzione per ottenere una connessione al database, usata in tutti i metodi che accedono al database
 # usa i parametri da Config.DB_PARAMS
+@contextmanager
 def get_conn():
-    return psycopg2.connect(**Config.DB_PARAMS)
+    conn = psycopg2.connect(**Config.DB_PARAMS)
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 # funzione per convertire qualsiasi valore numerico in Decimal con 2 decimali, usando arrotondamento HALF_UP
@@ -359,10 +365,12 @@ def report_top_prodotti(dt_inizio, dt_fine, limit=10):
 # funzione per ottenere la lista delle vendite nel periodo specificato, con data e totale, ordinati per data decrescente
 def report_vendite_periodo(dt_inizio, dt_fine):
     sql = """
-        SELECT id, data_ora, totale
-        FROM vendite
-        WHERE data_ora BETWEEN %s AND %s
-        ORDER BY data_ora DESC
+        SELECT v.id, v.data_ora, v.totale, COUNT(rv.id) AS n_righe
+        FROM vendite v
+        LEFT JOIN dettagli_vendita rv ON rv.vendita_id = v.id
+        WHERE v.data_ora BETWEEN %s AND %s
+        GROUP BY v.id, v.data_ora, v.totale
+        ORDER BY v.data_ora DESC
     """
 
     with get_conn() as conn:
