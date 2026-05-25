@@ -113,7 +113,7 @@ def prodotto_get(id):
 
 
 # funzione per inserire un nuovo prodtto
-def prodotto_insert(nome, tipo, prezzo, quantita, soglia_minima, codice=None):
+def prodotto_insert(nome, tipo, prezzo, quantita, soglia_minima, codice = None):
     with get_conn() as conn:
         with conn.cursor() as cur:
             if codice and codice.strip():

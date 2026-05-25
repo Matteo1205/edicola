@@ -1,18 +1,24 @@
+import db
+import psycopg2
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from routes.utils import parse_int, parse_float
-import db
 
+
+# blueprint per la gestione dei prodotti
 bp = Blueprint('prodotti', __name__, url_prefix='/prodotti')
 
 
+# rotta per visualizzare la lista dei prodotti, con filtro per tipo
 @bp.route('/')
 def lista():
     tipo_filter = request.args.get('tipo', '')
-    prodotti = db.prodotti_lista(tipo=tipo_filter or None)
+    prodotti = db.prodotti_lista(tipo = tipo_filter or None)
     tipi = db.prodotti_tipi()
+
     return render_template('prodotti.html', prodotti=prodotti, tipi=tipi, tipo_filter=tipo_filter)
 
 
+# rotta per aggiungere un nuovo prodotto, con validazione dei dati e gestione degli errori
 @bp.route('/nuovo', methods=['GET', 'POST'])
 def nuovo():
     if request.method == 'POST':
@@ -37,6 +43,7 @@ def nuovo():
         if soglia_minima is None or soglia_minima < 0:
             flash('Soglia minima non valida.', 'error')
             return render_template('prodotto_form.html', prodotto=None, action='Aggiungi')
+        
         _, codice = db.prodotto_insert(
             nome=nome,
             tipo=tipo,
@@ -44,25 +51,38 @@ def nuovo():
             quantita=quantita,
             soglia_minima=soglia_minima,
         )
+
         flash(f'Prodotto "{nome}" aggiunto (codice {codice}).', 'success')
         return redirect(url_for('prodotti.lista'))
+    
     return render_template('prodotto_form.html', prodotto=None, action='Aggiungi')
 
 
+# rotta per modificare un prodotto esistente, con validazione dei dati e gestione degli errori
 @bp.route('/modifica/<int:id>', methods=['GET', 'POST'])
 def modifica(id):
     prodotto = db.prodotto_get(id)
+    
     if not prodotto:
         flash('Prodotto non trovato.', 'error')
         return redirect(url_for('prodotti.lista'))
 
     if request.method == 'POST':
-        nuovo_codice = prodotto['codice']
         nome = request.form['nome'].strip()
         tipo = request.form['tipo'].strip()
         prezzo = parse_float(request.form.get('prezzo'))
         quantita = parse_int(request.form.get('quantita'))
         soglia_minima = parse_int(request.form.get('soglia_minima', default=5))
+
+        if tipo.lower() != prodotto['tipo'].lower():
+            nuovo_codice = db._codice_prodotto(tipo, id, data=None)
+            # Volendo preservare la data originale potremmo estrarla stringando `prodotto['codice']`.
+            # Estraiamo la data dal vecchio codice per mantenere la coerenza
+            parti_vecchio_codice = prodotto['codice'].split('-')
+            if len(parti_vecchio_codice) == 3:
+                nuovo_codice = f"{db._tipo_prefix(tipo)}-{parti_vecchio_codice[1]}-{id:04d}"
+        else:
+            nuovo_codice = prodotto['codice']
 
         if not nome:
             flash('Il nome del prodotto è obbligatorio.', 'error')
@@ -79,6 +99,7 @@ def modifica(id):
         if soglia_minima is None or soglia_minima < 0:
             flash('Soglia minima non valida.', 'error')
             return render_template('prodotto_form.html', prodotto=prodotto, action='Modifica')
+        
         db.prodotto_update(
             id=id,
             codice=nuovo_codice,
@@ -88,21 +109,27 @@ def modifica(id):
             quantita=quantita,
             soglia_minima=soglia_minima,
         )
+
         flash(f'Prodotto "{nome}" aggiornato.', 'success')
         return redirect(url_for('prodotti.lista'))
 
     return render_template('prodotto_form.html', prodotto=prodotto, action='Modifica')
 
 
+# rotta per eliminare un prodotto, con gestione degli errori in caso di vincoli di integrità
 @bp.route('/elimina/<int:id>', methods=['POST'])
 def elimina(id):
     prodotto = db.prodotto_get(id)
+
     if not prodotto:
         flash('Prodotto non trovato.', 'error')
         return redirect(url_for('prodotti.lista'))
     try:
         db.prodotto_delete(id)
         flash(f'Prodotto "{prodotto["nome"]}" eliminato.', 'success')
-    except Exception:
+    except psycopg2.IntegrityError:
         flash('Impossibile eliminare: il prodotto è presente in vendite esistenti.', 'error')
+    except Exception as e:
+        flash(f'Si è verificato un errore del server durante l\'eliminazione.', 'error')
+
     return redirect(url_for('prodotti.lista'))
