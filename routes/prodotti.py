@@ -30,19 +30,19 @@ def nuovo():
 
         if not nome:
             flash('Il nome del prodotto è obbligatorio.', 'error')
-            return render_template('prodotto_form.html', prodotto=None, action='Aggiungi')
+            return render_template('prodotto_form.html', prodotto = None, action = 'Aggiungi')
         if not tipo:
             flash('Il tipo di prodotto è obbligatorio.', 'error')
-            return render_template('prodotto_form.html', prodotto=None, action='Aggiungi')
+            return render_template('prodotto_form.html', prodotto = None, action = 'Aggiungi')
         if prezzo is None or prezzo < 0:
             flash('Prezzo non valido.', 'error')
-            return render_template('prodotto_form.html', prodotto=None, action='Aggiungi')
+            return render_template('prodotto_form.html', prodotto = None, action = 'Aggiungi')
         if quantita is None or quantita < 0:
             flash('Quantità non valida.', 'error')
-            return render_template('prodotto_form.html', prodotto=None, action='Aggiungi')
+            return render_template('prodotto_form.html', prodotto = None, action = 'Aggiungi')
         if soglia_minima is None or soglia_minima < 0:
             flash('Soglia minima non valida.', 'error')
-            return render_template('prodotto_form.html', prodotto=None, action='Aggiungi')
+            return render_template('prodotto_form.html', prodotto = None, action='Aggiungi')
         
         _, codice = db.prodotto_insert(
             nome=nome,
@@ -55,14 +55,14 @@ def nuovo():
         flash(f'Prodotto "{nome}" aggiunto (codice {codice}).', 'success')
         return redirect(url_for('prodotti.lista'))
     
-    return render_template('prodotto_form.html', prodotto=None, action='Aggiungi')
+    return render_template('prodotto_form.html', prodotto = None, action = 'Aggiungi')
 
 
 # rotta per modificare un prodotto esistente, con validazione dei dati e gestione degli errori
 @bp.route('/modifica/<int:id>', methods=['GET', 'POST'])
 def modifica(id):
     prodotto = db.prodotto_get(id)
-    
+
     if not prodotto:
         flash('Prodotto non trovato.', 'error')
         return redirect(url_for('prodotti.lista'))
@@ -76,8 +76,8 @@ def modifica(id):
 
         if tipo.lower() != prodotto['tipo'].lower():
             nuovo_codice = db._codice_prodotto(tipo, id, data=None)
-            # Volendo preservare la data originale potremmo estrarla stringando `prodotto['codice']`.
-            # Estraiamo la data dal vecchio codice per mantenere la coerenza
+            # volendo preservare la data originale potremmo estrarla stringando `prodotto['codice']`.
+            # estraiamo la data dal vecchio codice per mantenere la coerenza
             parti_vecchio_codice = prodotto['codice'].split('-')
             if len(parti_vecchio_codice) == 3:
                 nuovo_codice = f"{db._tipo_prefix(tipo)}-{parti_vecchio_codice[1]}-{id:04d}"
@@ -86,19 +86,19 @@ def modifica(id):
 
         if not nome:
             flash('Il nome del prodotto è obbligatorio.', 'error')
-            return render_template('prodotto_form.html', prodotto=prodotto, action='Modifica')
+            return render_template('prodotto_form.html', prodotto = prodotto, action = 'Modifica')
         if not tipo:
             flash('Il tipo di prodotto è obbligatorio.', 'error')
-            return render_template('prodotto_form.html', prodotto=prodotto, action='Modifica')
+            return render_template('prodotto_form.html', prodotto = prodotto, action = 'Modifica')
         if prezzo is None or prezzo < 0:
             flash('Prezzo non valido.', 'error')
-            return render_template('prodotto_form.html', prodotto=prodotto, action='Modifica')
+            return render_template('prodotto_form.html', prodotto = prodotto, action = 'Modifica')
         if quantita is None or quantita < 0:
             flash('Quantità non valida.', 'error')
-            return render_template('prodotto_form.html', prodotto=prodotto, action='Modifica')
+            return render_template('prodotto_form.html', prodotto = prodotto, action = 'Modifica')
         if soglia_minima is None or soglia_minima < 0:
             flash('Soglia minima non valida.', 'error')
-            return render_template('prodotto_form.html', prodotto=prodotto, action='Modifica')
+            return render_template('prodotto_form.html', prodotto = prodotto, action = 'Modifica')
         
         db.prodotto_update(
             id=id,
@@ -113,7 +113,7 @@ def modifica(id):
         flash(f'Prodotto "{nome}" aggiornato.', 'success')
         return redirect(url_for('prodotti.lista'))
 
-    return render_template('prodotto_form.html', prodotto=prodotto, action='Modifica')
+    return render_template('prodotto_form.html', prodotto = prodotto, action = 'Modifica')
 
 
 # rotta per eliminare un prodotto, con gestione degli errori in caso di vincoli di integrità
