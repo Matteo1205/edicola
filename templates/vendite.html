@@ -35,7 +35,7 @@
                         <td>{{ v.data_ora.strftime('%d/%m/%Y %H:%M') }}</td>
                         <td class="text-end">{{ v.n_articoli }} articol{{ 'o' if v.n_articoli == 1 else 'i' }}</td>
                         <td class="text-end fw-semibold">€ {{ "%.2f"|format(v.totale) }}</td>
-                        <td class="text-end"><a href="{{ url_for('vendite.ricevuta', id=v.id) }}" class="btn btn-sm btn-outline-dark">Ricevuta</a></td>
+                        <td class="text-end"><a href="{{ url_for('vendite.ricevuta', id=v.id) }}" class="bi-receipt btn btn-sm btn-outline-dark"> Ricevuta</a></td>
                     </tr>
                     {% endfor %}
                 </tbody>

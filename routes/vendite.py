@@ -13,6 +13,10 @@ def lista():
     # recupera tutte le vendite con i dati necessari per la lista (JOIN clienti)
     vendite = db.vendite_lista()
 
+    # se non ci sono vendite, reindirizza al form di nuova vendita
+    if not vendite:
+        return redirect(url_for('vendite.nuova'))
+
     # renderizza la pagina con la lista delle vendite
     return render_template('vendite.html', vendite=vendite)
 
