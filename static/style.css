@@ -13,4 +13,8 @@
         max-width: 100% !important;
         padding: 0 !important;
     }
+
+    .badge.text-bg-success, .alert {
+        display: none !important;
+    }
 }
