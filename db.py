@@ -33,24 +33,27 @@ _TIPO_PREFIX_MAP = {
     "rivista": "RIV",
     "fumetto": "FUM",
     "libro": "LIB",
-    "snack": "SNK",
     "altro": "ALT",
 }
 
 
 # funzione per definire il prefisso del codice prodotto
 def _tipo_prefix(tipo):
+    # se il tipo è mancante o vuoto, uso "GEN" per generico
     if not tipo:
         return "GEN"
     key = tipo.strip().lower()
 
+    # se il tipo è nella mappa, uso il prefisso definito, altrimenti genero un prefisso pulito dai primi 3 caratteri del tipo
     if key in _TIPO_PREFIX_MAP:
         return _TIPO_PREFIX_MAP[key]
     cleaned = re.sub(r"[^a-z0-9]", "", key)
 
+    # se dopo la pulizia rimangono almeno 3 caratteri, uso i primi 3, altrimenti uso quelli disponibili e completo con "X"
     if len(cleaned) >= 3:
         return cleaned[:3].upper()
     
+    # se il tipo è troppo corto o non ha caratteri validi, uso "GEN" per generico
     if cleaned:
         return cleaned.upper().ljust(3, "X")
     
@@ -59,9 +62,9 @@ def _tipo_prefix(tipo):
 
 # funzione per generare il codice prodotto a partire dal tipo
 def _codice_prodotto(tipo, prodotto_id, data=None):
-    data = data or datetime.now()
+    data = data or datetime.now()       # se non viene fornita una data, uso quella corrente
 
-    data_str = data.strftime("%d%m%y")
+    data_str = data.strftime("%d%m%y")  # formato DDMMYY per la data
 
     return f"{_tipo_prefix(tipo)}-{data_str}-{prodotto_id:04d}"
 
@@ -73,10 +76,13 @@ def prodotti_lista(tipo=None):
         FROM prodotti
     """
 
+    # costruisco dinamicamente la clausola WHERE se viene specificato un filtro per tipo
     params = []
     if tipo:
         sql += " WHERE tipo = %s"
         params.append(tipo)
+
+    # ordino sempre per nome prodotto in modo consistente, indipendentemente dal filtro
     sql += " ORDER BY nome"
 
     with get_conn() as conn:
@@ -150,6 +156,7 @@ def prodotto_update(id, codice, nome, tipo, prezzo, quantita, soglia_minima):
         SET codice=%s, nome=%s, tipo=%s, prezzo=%s, quantita=%s, soglia_minima=%s
         WHERE id=%s
     """
+
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, (codice, nome, tipo, prezzo, quantita, soglia_minima, id))
@@ -162,6 +169,7 @@ def prodotto_delete(id):
         DELETE FROM prodotti 
         WHERE id = %s
     """
+
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, (id,))
@@ -176,11 +184,13 @@ def prodotti_scorta_bassa(tipo=None, solo_scorta_bassa=False):
         WHERE 1=1
     """
 
+    # costruisco dinamicamente la clausola WHERE se viene specificato un filtro per tipo o se voglio solo quelli a scorta bassa
     params = []
     if tipo:
         sql += " AND tipo = %s"
         params.append(tipo)
 
+    # se voglio solo quelli a scorta bassa, aggiungo la condizione alla query
     if solo_scorta_bassa:
         sql += " AND quantita < soglia_minima"
     sql += " ORDER BY nome"
@@ -214,9 +224,11 @@ def vendita_insert(righe):
             cur.execute(
                 "INSERT INTO vendite (data_ora, totale) VALUES (NOW(), 0) RETURNING id"
             )
-            vendita_id = cur.fetchone()[0]
+            vendita_id = cur.fetchone()[0]  # ottengo l'id generato per la vendita
+ 
+            totale = Decimal('0.00')        # variabile per calcolare il totale della vendita
 
-            totale = Decimal('0.00')
+            # per ogni riga della vendita, inserisco i dettagli e aggiorno le scorte, tutto dentro la stessa transazione
             for riga in righe:
                 pid = riga['prodotto_id']
                 qty = riga['quantita']
@@ -230,14 +242,15 @@ def vendita_insert(righe):
                     """,
                     (pid,)
                 )
-                row = cur.fetchone()
+                row = cur.fetchone()    
                 if not row:
                     raise ValueError(f"Prodotto {pid} non trovato.")
                 
-                prezzo_unit, disponibile = row
-                prezzo_decimal = _to_decimal(prezzo_unit)
-                subtotale = _to_decimal(prezzo_decimal * qty)
+                prezzo_unit, disponibile = row                  # ottengo prezzo e quantità disponibile
+                prezzo_decimal = _to_decimal(prezzo_unit)       # converto il prezzo in Decimal con 2 decimali
+                subtotale = _to_decimal(prezzo_decimal * qty)   # calcolo il subtotale per la riga
 
+                # controllo se la quantità richiesta è disponibile, altrimenti sollevo un errore per rollback
                 if disponibile < qty:
                     raise ValueError(
                         f"Quantità insufficiente per prodotto id={pid} "
@@ -276,6 +289,7 @@ def vendita_insert(righe):
             )
 
         conn.commit()
+
     return vendita_id
 
 
@@ -332,15 +346,49 @@ def vendita_righe(vendita_id):
 # funzione per ottenere il totale e il numero di vendite in un periodo specificato
 def report_totale(dt_inizio, dt_fine):
     sql = """
-        SELECT COALESCE(SUM(totale), 0) AS totale_periodo, COUNT(*) AS n_vendite
-        FROM vendite
-        WHERE data_ora BETWEEN %s AND %s
+        WITH vendite_periodo AS (
+            SELECT id, totale
+            FROM vendite
+            WHERE data_ora BETWEEN %s AND %s
+        ),
+        righe_periodo AS (
+            SELECT rv.quantita
+            FROM dettagli_vendita rv
+            JOIN vendite_periodo vp ON vp.id = rv.vendita_id
+        )
+        SELECT
+            COALESCE((SELECT SUM(totale) FROM vendite_periodo), 0) AS totale_periodo,
+            (SELECT COUNT(*) FROM vendite_periodo) AS n_vendite,
+            COALESCE((SELECT SUM(quantita) FROM righe_periodo), 0) AS articoli_venduti,
+            COALESCE((SELECT AVG(totale) FROM vendite_periodo), 0) AS ticket_medio,
+            COALESCE((SELECT MAX(totale) FROM vendite_periodo), 0) AS vendita_massima
     """
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(sql, (dt_inizio, dt_fine))
             return cur.fetchone()
+
+
+# funzione per ottenere la ripartizione del fatturato per tipo di prodotto nel periodo specificato
+def report_ripartizione_tipi(dt_inizio, dt_fine):
+    sql = """
+        SELECT p.tipo,
+               COALESCE(SUM(rv.quantita), 0) AS quantita_venduta,
+               COALESCE(SUM(rv.subtotale), 0) AS fatturato,
+               COUNT(DISTINCT rv.vendita_id) AS n_vendite
+        FROM dettagli_vendita rv
+        JOIN prodotti p ON p.id = rv.prodotto_id
+        JOIN vendite  v ON v.id = rv.vendita_id
+        WHERE v.data_ora BETWEEN %s AND %s
+        GROUP BY p.tipo
+        ORDER BY fatturato DESC, p.tipo
+    """
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql, (dt_inizio, dt_fine))
+            return cur.fetchall()
 
 
 # funzione per ottenere i prodotti più venduti in un periodo specificato, con quantità totale e importo totale, ordinati per quantità decrescente
@@ -365,7 +413,7 @@ def report_top_prodotti(dt_inizio, dt_fine, limit=10):
 # funzione per ottenere la lista delle vendite nel periodo specificato, con data e totale, ordinati per data decrescente
 def report_vendite_periodo(dt_inizio, dt_fine):
     sql = """
-        SELECT v.id, v.data_ora, v.totale, COUNT(rv.id) AS n_righe
+        SELECT v.id, v.data_ora, v.totale, COUNT(rv.id) AS n_righe, COALESCE(SUM(rv.quantita), 0) AS quantita_totale
         FROM vendite v
         LEFT JOIN dettagli_vendita rv ON rv.vendita_id = v.id
         WHERE v.data_ora BETWEEN %s AND %s
