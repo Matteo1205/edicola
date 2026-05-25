@@ -8,17 +8,108 @@
         <p class="text-muted mb-0">Periodo selezionato: <strong>{{ periodo_label }}</strong> dal {{ inizio.strftime('%d/%m/%Y') }}{% if inizio != fine %} al {{ fine.strftime('%d/%m/%Y') }}{% endif %}</p>
     </div>
 
-    <form method="get" class="card shadow-sm border-0 p-3 bg-white">
-        <label for="periodo" class="form-label mb-2">Periodo</label>
-        <div class="input-group">
-            <select id="periodo" name="periodo" class="form-select" onchange="this.form.submit()">
-                <option value="giornaliero" {% if tipo == 'giornaliero' %}selected{% endif %}>Oggi</option>
-                <option value="settimanale" {% if tipo == 'settimanale' %}selected{% endif %}>Questa settimana</option>
-                <option value="mensile" {% if tipo == 'mensile' %}selected{% endif %}>Questo mese</option>
-            </select>
-        </div>
+    <form method="get" id="report-filters">
+        <div class="d-flex flex-wrap align-items-center gap-3">
+                <div class="d-flex align-items-center gap-2">
+                    <label for="periodo" class="form-label mb-0">Periodo</label>
+                    <select id="periodo" name="periodo" class="form-select w-auto" style="min-width:160px">
+                        <option value="giorno" {% if tipo == 'giorno' %}selected{% endif %}>Giorno</option>
+                        <option value="settimana" {% if tipo == 'settimana' %}selected{% endif %}>Settimana</option>
+                        <option value="mese" {% if tipo == 'mese' %}selected{% endif %}>Mese</option>
+                        <option value="anno" {% if tipo == 'anno' %}selected{% endif %}>Anno</option>
+                    </select>
+                </div>
+
+                <div id="periodo-field" class="d-flex align-items-center gap-2">
+                    <div class="report-periodo d-flex align-items-center gap-2" data-periodo="giorno">
+                        <label for="giorno" class="form-label mb-0">Giorno</label>
+                        <div class="input-group" style="min-width:200px">
+                            <button class="btn btn-outline-dark" type="button" id="giorno-prev" aria-label="Giorno precedente">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <input id="giorno" name="giorno" type="date" class="form-control" value="{{ giorno_str }}">
+                            <button class="btn btn-outline-dark" type="button" id="giorno-next" aria-label="Giorno successivo">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="report-periodo d-flex align-items-center gap-2 d-none" data-periodo="settimana">
+                        <label for="settimana" class="form-label mb-0">Settimana</label>
+                        <input id="settimana" name="settimana" type="week" class="form-control w-auto" style="min-width:180px" value="{{ settimana_str }}">
+                    </div>
+
+                    <div class="report-periodo d-flex align-items-center gap-2 d-none" data-periodo="mese">
+                        <label for="mese" class="form-label mb-0">Mese</label>
+                        <input id="mese" name="mese" type="month" class="form-control w-auto" style="min-width:180px" value="{{ mese_str }}">
+                    </div>
+
+                    <div class="report-periodo d-flex align-items-center gap-2 d-none" data-periodo="anno">
+                        <label for="anno" class="form-label mb-0">Anno</label>
+                        <input id="anno" name="anno" type="number" class="form-control w-auto" style="min-width:120px" min="2000" max="2100" step="1" value="{{ anno_str }}">
+                    </div>
+                </div>
+            </div>
     </form>
 </div>
+
+<script>
+const form = document.getElementById('report-filters');
+const periodo = document.getElementById('periodo');
+const blocchiPeriodo = document.querySelectorAll('.report-periodo');
+const giornoInput = document.getElementById('giorno');
+const settimanaInput = document.getElementById('settimana');
+const meseInput = document.getElementById('mese');
+const annoInput = document.getElementById('anno');
+const giornoPrev = document.getElementById('giorno-prev');
+const giornoNext = document.getElementById('giorno-next');
+
+function parseDate(value) {
+    if (!value) {
+        return null;
+    }
+    const parts = value.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(Number.isNaN)) {
+        return null;
+    }
+    return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+}
+
+function formatDate(dateObj) {
+    return dateObj.toISOString().slice(0, 10);
+}
+
+function aggiornaVisibilita() {
+    blocchiPeriodo.forEach((blocco) => {
+        const match = blocco.dataset.periodo === periodo.value;
+        blocco.classList.toggle('d-none', !match);
+    });
+}
+
+function shiftDay(delta) {
+    const current = parseDate(giornoInput.value) || new Date();
+    current.setUTCDate(current.getUTCDate() + delta);
+    giornoInput.value = formatDate(current);
+    form.submit();
+}
+
+periodo.addEventListener('change', () => {
+    aggiornaVisibilita();
+    form.submit();
+});
+
+giornoInput.addEventListener('change', () => form.submit());
+settimanaInput.addEventListener('change', () => form.submit());
+meseInput.addEventListener('change', () => form.submit());
+annoInput.addEventListener('change', () => form.submit());
+
+giornoPrev.addEventListener('click', () => shiftDay(-1));
+giornoNext.addEventListener('click', () => shiftDay(1));
+
+document.addEventListener('DOMContentLoaded', () => {
+    aggiornaVisibilita();
+});
+</script>
 
 <div class="row g-3 mb-4">
     <div class="col-12 col-md-6 col-xl-3">

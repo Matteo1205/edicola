@@ -8,44 +8,125 @@ bp = Blueprint('report', __name__, url_prefix='/report')
 
 # tipi di report disponibili per il filtro a tendina
 _TIPI_PERIODO = {
-    'giornaliero': 'Oggi',
-    'settimanale': 'Questa settimana',
-    'mensile': 'Questo mese',
+    'giorno': 'Giorno',
+    'settimana': 'Settimana',
+    'mese': 'Mese',
+    'anno': 'Anno',
 }
 
 
 # funzione per calcolare le date di inizio e fine del periodo in base al tipo selezionato
-def _periodo(tipo):
-    # calcola le date di inizio e fine del periodo in base al tipo selezionato
-    oggi = date.today()
-
-    # per il report settimanale, inizio è il lunedì della settimana corrente e fine è la domenica
-    if tipo == 'settimanale':
-        inizio = oggi - timedelta(days=oggi.weekday())
-        fine = inizio + timedelta(days=6)
-    # per il report mensile, inizio è il primo giorno del mese e fine è l'ultimo giorno del mese
-    elif tipo == 'mensile':
-        inizio = oggi.replace(day=1)
-        fine = (oggi.replace(month=oggi.month % 12 + 1, day=1) - timedelta(days=1)) \
-               if oggi.month < 12 else oggi.replace(day=31)
-    # per il report giornaliero, inizio e fine sono entrambi oggi
+def _ultimo_giorno_mese(riferimento):
+    if riferimento.month == 12:
+        primo_giorno_mese_successivo = riferimento.replace(year=riferimento.year + 1, month=1, day=1)
     else:
-        inizio = fine = oggi
-    
-    return inizio, fine
+        primo_giorno_mese_successivo = riferimento.replace(month=riferimento.month + 1, day=1)
+    return primo_giorno_mese_successivo - timedelta(days=1)
+
+
+# funzioni per passare le date dai parametri della query string, con gestione dei formati e dei valori non validi
+def _parse_data(val):
+    if not val:
+        return None
+    try:
+        return datetime.strptime(val, '%Y-%m-%d').date()
+    except ValueError:
+        return None
+
+
+# funzione per convertire una stringa del formato "YYYY-Www" in una data che rappresenta il primo giorno della settimana corrispondente
+def _parse_settimana(val):
+    if not val:
+        return None
+    parts = val.split('-W')
+    if len(parts) != 2:
+        return None
+    try:
+        anno = int(parts[0])
+        settimana = int(parts[1])
+        return date.fromisocalendar(anno, settimana, 1)
+    except (ValueError, TypeError):
+        return None
+
+
+# funzione per convertire una stringa del formato "YYYY-MM" in una data che rappresenta il primo giorno del mese corrispondente
+def _parse_mese(val):
+    if not val:
+        return None
+    parts = val.split('-')
+    if len(parts) != 2:
+        return None
+    try:
+        anno = int(parts[0])
+        mese = int(parts[1])
+        return date(anno, mese, 1)
+    except (ValueError, TypeError):
+        return None
+
+
+# funzione per convertire una stringa del formato "YYYY" in una data che rappresenta il primo giorno dell'anno corrispondente
+def _parse_anno(val):
+    if not val:
+        return None
+    try:
+        anno = int(str(val).strip())
+        return date(anno, 1, 1)
+    except (ValueError, TypeError):
+        return None
+
+
+# funzione per calcolare la data del primo giorno della settimana a cui appartiene una data di riferimento
+def _inizio_settimana(riferimento):
+    return riferimento - timedelta(days=riferimento.weekday())
+
+
+# funzioni per convertire le date in stringhe da usare come valori degli input nei filtri
+def _week_input_value(riferimento):
+    iso_year, iso_week, _ = riferimento.isocalendar()
+    return f"{iso_year}-W{iso_week:02d}"
+
+
+# funzione per convertire una data in una stringa del formato "YYYY-MM" da usare come valore dell'input del filtro per il mese
+def _month_input_value(riferimento):
+    return f"{riferimento.year}-{riferimento.month:02d}"
 
 
 # rotta per visualizzare il report, con filtro per periodo e gestione dei dati da mostrare
 @bp.route('/')
 def index():
-    # recupera il tipo di periodo selezionato dal filtro a tendina, con default 'giornaliero'
-    tipo = request.args.get('periodo', 'giornaliero')
+    # recupera il tipo di periodo selezionato dal filtro a tendina, con default 'giorno'
+    tipo_raw = request.args.get('periodo', 'giorno')
+    tipo_alias = {
+        'giornaliero': 'giorno',
+        'settimanale': 'settimana',
+        'mensile': 'mese',
+    }
+    tipo = tipo_alias.get(tipo_raw, tipo_raw)
 
+    # se il tipo selezionato non è valido, usiamo 'giorno' come default
     if tipo not in _TIPI_PERIODO:
-        tipo = 'giornaliero'
+        tipo = 'giorno'
 
-    # calcola le date di inizio e fine del periodo in base al tipo selezionato
-    inizio, fine = _periodo(tipo)
+    # recupera le date di riferimento per il periodo selezionato dai parametri della query string, con gestione dei formati e dei valori non validi
+    oggi = date.today()
+    giorno_sel = _parse_data(request.args.get('giorno')) or oggi
+    settimana_sel = _parse_settimana(request.args.get('settimana')) or _inizio_settimana(oggi)
+    mese_sel = _parse_mese(request.args.get('mese')) or oggi.replace(day=1)
+    anno_sel = _parse_anno(request.args.get('anno')) or date(oggi.year, 1, 1)
+
+    # calcola le date di inizio e fine del periodo da usare per filtrare i dati del report in base al tipo selezionato
+    if tipo == 'settimana':
+        inizio = settimana_sel
+        fine = inizio + timedelta(days=6)
+    elif tipo == 'mese':
+        inizio = mese_sel
+        fine = _ultimo_giorno_mese(inizio)
+    elif tipo == 'anno':
+        inizio = anno_sel
+        fine = date(inizio.year, 12, 31)
+    else:
+        inizio = giorno_sel
+        fine = giorno_sel
     
     # per evitare problemi di timezone, convertiamo le date in datetime con timezone locale
     local_tz = datetime.now().astimezone().tzinfo
@@ -66,6 +147,10 @@ def index():
         'report.html',
         tipo=tipo,
         periodo_label=periodo_label,
+        giorno_str=giorno_sel.isoformat(),
+        settimana_str=_week_input_value(settimana_sel),
+        mese_str=_month_input_value(mese_sel),
+        anno_str=str(anno_sel.year),
         inizio=inizio,
         fine=fine,
         stats=stats,
