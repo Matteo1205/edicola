@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Vendite – Edicola{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
+    <div>
+        <p class="text-uppercase small fw-semibold text-primary mb-2">Operazioni</p>
+        <h1 class="mb-2">Storico vendite</h1>
+        <p class="text-muted mb-0">Registro cronologico degli scontrini con accesso rapido alla ricevuta.</p>
+    </div>
+    <a href="{{ url_for('vendite.nuova') }}" class="btn btn-dark">+ Nuova vendita</a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white border-0 pb-0">
+        <h2 class="h5 mb-1">Vendite registrate</h2>
+        <p class="text-muted small mb-0">Ultimi movimenti di cassa e dettaglio articoli venduti.</p>
+    </div>
+    <div class="card-body">
+        {% if vendite %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Data e ora</th>
+                        <th class="text-end">Prodotti</th>
+                        <th class="text-end">Totale</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in vendite %}
+                    <tr>
+                        <td class="fw-medium">{{ v.id }}</td>
+                        <td>{{ v.data_ora.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td class="text-end">{{ v.n_articoli }} articol{{ 'o' if v.n_articoli == 1 else 'i' }}</td>
+                        <td class="text-end fw-semibold">€ {{ "%.2f"|format(v.totale) }}</td>
+                        <td class="text-end"><a href="{{ url_for('vendite.ricevuta', id=v.id) }}" class="btn btn-sm btn-outline-dark">Ricevuta</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-light border mb-0">Nessuna vendita registrata.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

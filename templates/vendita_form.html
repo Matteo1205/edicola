@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block title %}Nuova Vendita – Edicola{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
+    <div>
+        <p class="text-uppercase small fw-semibold text-primary mb-2"><i class="bi bi-receipt me-1"></i>Vendite</p>
+        <h1 class="mb-2">Nuova vendita</h1>
+        <p class="text-muted mb-0">Seleziona i prodotti disponibili e compila le quantità da registrare a scontrino.</p>
+    </div>
+    <a href="{{ url_for('vendite.lista') }}" class="btn btn-outline-dark">Storico vendite</a>
+</div>
+
+{% if not prodotti %}
+<div class="alert alert-light border d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-triangle text-warning"></i>
+    Nessun prodotto disponibile in magazzino. <a href="{{ url_for('prodotti.nuovo') }}">Aggiungine uno</a>.
+</div>
+{% else %}
+<form method="post" id="vendita-form">
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="righe-table" class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th><i class="bi bi-box me-1"></i>Prodotto</th>
+                            <th>Disponibili</th>
+                            <th>Prezzo</th>
+                            <th>Quantità</th>
+                            <th>Subtotale</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="righe-body">
+                        <tr class="riga-vendita">
+                            <td>
+                                <select name="prodotto_id[]" class="form-select sel-prodotto" required>
+                                    <option value="">-- seleziona --</option>
+                                    {% for p in prodotti %}
+                                    <option value="{{ p.id }}"
+                                            data-prezzo="{{ p.prezzo }}"
+                                            data-max="{{ p.quantita }}">
+                                        {{ p.nome }} ({{ p.tipo }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td class="td-disponibili text-nowrap">–</td>
+                            <td class="td-prezzo text-nowrap">–</td>
+                            <td><input type="number" name="quantita[]" class="form-control inp-qty" min="1" value="1" required></td>
+                            <td class="td-subtotale text-nowrap fw-semibold">–</td>
+                            <td><button type="button" class="btn btn-sm btn-outline-danger btn-rimuovi"><i class="bi bi-trash me-1"></i>Rimuovi</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+        <button type="button" id="btn-aggiungi-riga" class="btn btn-outline-dark"><i class="bi bi-plus-circle me-1"></i>Aggiungi prodotto</button>
+        <div class="card shadow-sm border-0 bg-white">
+            <div class="card-body py-3 px-4">
+                <strong>Totale: € <span id="totale-display">0.00</span></strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="submit" class="btn btn-dark"><i class="bi bi-check2-circle me-1"></i>Registra vendita</button>
+        <a href="{{ url_for('vendite.lista') }}" class="btn btn-outline-dark"><i class="bi bi-x-circle me-1"></i>Annulla</a>
+    </div>
+</form>
+
+<script>
+const prodottiData = {
+    {% for p in prodotti %}
+    "{{ p.id }}": { prezzo: {{ p.prezzo }}, max: {{ p.quantita }}, nome: "{{ p.nome }}" },
+    {% endfor %}
+};
+
+function aggiornaRiga(riga) {
+    const sel = riga.querySelector('.sel-prodotto');
+    const inp = riga.querySelector('.inp-qty');
+    const pid = sel.value;
+    if (pid && prodottiData[pid]) {
+        const d = prodottiData[pid];
+        riga.querySelector('.td-disponibili').textContent = d.max;
+        riga.querySelector('.td-prezzo').textContent = '€ ' + d.prezzo.toFixed(2);
+        inp.max = d.max;
+        const qty = Math.min(parseInt(inp.value) || 1, d.max);
+        inp.value = qty;
+        riga.querySelector('.td-subtotale').textContent = '€ ' + (d.prezzo * qty).toFixed(2);
+    } else {
+        riga.querySelector('.td-disponibili').textContent = '–';
+        riga.querySelector('.td-prezzo').textContent = '–';
+        riga.querySelector('.td-subtotale').textContent = '–';
+    }
+    aggiornaTotale();
+}
+
+function aggiornaTotale() {
+    let tot = 0;
+    document.querySelectorAll('.riga-vendita').forEach(riga => {
+        const sel = riga.querySelector('.sel-prodotto');
+        const inp = riga.querySelector('.inp-qty');
+        const pid = sel.value;
+        if (pid && prodottiData[pid]) {
+            tot += prodottiData[pid].prezzo * (parseInt(inp.value) || 0);
+        }
+    });
+    document.getElementById('totale-display').textContent = tot.toFixed(2);
+}
+
+function bindRiga(riga) {
+    riga.querySelector('.sel-prodotto').addEventListener('change', () => aggiornaRiga(riga));
+    riga.querySelector('.inp-qty').addEventListener('input', () => aggiornaRiga(riga));
+    riga.querySelector('.btn-rimuovi').addEventListener('click', () => {
+        if (document.querySelectorAll('.riga-vendita').length > 1) {
+            riga.remove();
+            aggiornaTotale();
+        }
+    });
+}
+
+document.querySelectorAll('.riga-vendita').forEach(bindRiga);
+
+document.getElementById('btn-aggiungi-riga').addEventListener('click', () => {
+    const prima = document.querySelector('.riga-vendita');
+    const nuova = prima.cloneNode(true);
+    nuova.querySelector('.sel-prodotto').value = '';
+    nuova.querySelector('.inp-qty').value = 1;
+    nuova.querySelector('.td-disponibili').textContent = '–';
+    nuova.querySelector('.td-prezzo').textContent = '–';
+    nuova.querySelector('.td-subtotale').textContent = '–';
+    document.getElementById('righe-body').appendChild(nuova);
+    bindRiga(nuova);
+});
+</script>
+{% endif %}
+{% endblock %}

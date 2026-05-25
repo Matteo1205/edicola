@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}Inventario – Edicola{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
+    <div>
+        <p class="text-uppercase small fw-semibold text-primary mb-2"><i class="bi bi-box-seam me-1"></i>Magazzino</p>
+        <h1 class="mb-2">Inventario</h1>
+        <p class="text-muted mb-0">Monitoraggio giacenze, scorte critiche e disponibilità immediata dei prodotti.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('prodotti.nuovo') }}" class="btn btn-dark">+ Nuovo prodotto</a>
+        <a href="{{ url_for('vendite.nuova') }}" class="btn btn-outline-dark">+ Nuova vendita</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="card h-100 shadow-sm border-0 bg-white">
+            <div class="card-body">
+                <div class="text-uppercase small fw-semibold text-secondary mb-2"><i class="bi bi-grid-3x3-gap me-1"></i>Prodotti mostrati</div>
+                <div class="fs-2 fw-bold">{{ prodotti|length }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card h-100 shadow-sm border-0 bg-white">
+            <div class="card-body">
+                <div class="text-uppercase small fw-semibold text-secondary mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Sotto soglia</div>
+                <div class="fs-2 fw-bold">{{ n_scorta_bassa }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card h-100 shadow-sm border-0 bg-white">
+            <div class="card-body">
+                <div class="text-uppercase small fw-semibold text-secondary mb-2"><i class="bi bi-funnel me-1"></i>Filtro attivo</div>
+                <div class="fs-2 fw-bold">{{ 'Sì' if tipo_filter or solo_scorta_bassa else 'No' }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if n_scorta_bassa > 0 %}
+<div class="alert alert-warning shadow-sm">
+    <strong>{{ n_scorta_bassa }} prodott{{ 'o' if n_scorta_bassa == 1 else 'i' }}</strong> in esaurimento o sotto soglia minima.
+    <a class="alert-link" href="?scorta_bassa=1">Mostra solo quelli critici</a>
+</div>
+{% endif %}
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-12 col-md-5 col-lg-4">
+                <label for="tipo" class="form-label">Tipo</label>
+                <select id="tipo" name="tipo" class="form-select" onchange="this.form.submit()">
+                    <option value="">Tutti</option>
+                    {% for t in tipi %}
+                    <option value="{{ t }}" {% if t == tipo_filter %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-5 col-lg-4">
+                <div class="form-check form-switch pt-2">
+                    <input class="form-check-input" type="checkbox" id="scorta_bassa" name="scorta_bassa" value="1"
+                           {% if solo_scorta_bassa %}checked{% endif %}
+                           onchange="this.form.submit()">
+                    <label class="form-check-label" for="scorta_bassa">Solo scorta bassa</label>
+                </div>
+            </div>
+            <div class="col-12 col-md-2 col-lg-4 text-md-end">
+                {% if tipo_filter or solo_scorta_bassa %}
+                <a href="{{ url_for('inventario.index') }}" class="btn btn-outline-dark">Rimuovi filtri</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white border-0 pb-0">
+        <h2 class="h5 mb-1">Lista prodotti</h2>
+        <p class="text-muted small mb-0">Stato della disponibilità aggiornato in tempo reale.</p>
+    </div>
+    <div class="card-body">
+        {% if prodotti %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th><i class="bi bi-upc-scan me-1"></i>Codice</th>
+                        <th>Nome</th>
+                        <th>Tipo</th>
+                        <th class="text-end">Prezzo</th>
+                        <th class="text-end">Quantità</th>
+                        <th>Stato</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in prodotti %}
+                    <tr {% if p.quantita < p.soglia_minima %}class="scorta-bassa"{% endif %}>
+                        <td class="fw-medium">{{ p.codice }}</td>
+                        <td>{{ p.nome }}</td>
+                        <td><span class="badge text-bg-secondary"><i class="bi bi-tag me-1"></i>{{ p.tipo }}</span></td>
+                        <td class="text-end">€ {{ "%.2f"|format(p.prezzo) }}</td>
+                        <td class="text-end">{{ p.quantita }}</td>
+                        <td>
+                            {% if p.quantita == 0 %}
+                                <span class="badge text-bg-danger"><i class="bi bi-x-circle me-1"></i>Esaurito</span>
+                            {% elif p.quantita < p.soglia_minima %}
+                                <span class="badge text-bg-warning text-dark"><i class="bi bi-exclamation-circle me-1"></i>Scorta bassa</span>
+                            {% else %}
+                                <span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Disponibile</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-light border mb-0">Nessun prodotto trovato.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

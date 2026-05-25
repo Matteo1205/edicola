@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% block title %}Report Entrate – Edicola{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
+    <div>
+        <p class="text-uppercase small fw-semibold text-primary mb-2"><i class="bi bi-graph-up-arrow me-1"></i>Analisi vendite</p>
+        <h1 class="mb-2">Report entrate</h1>
+        <p class="text-muted mb-0">Periodo selezionato: <strong>{{ periodo_label }}</strong> dal {{ inizio.strftime('%d/%m/%Y') }}{% if inizio != fine %} al {{ fine.strftime('%d/%m/%Y') }}{% endif %}</p>
+    </div>
+
+    <form method="get" class="card shadow-sm border-0 p-3 bg-white">
+        <label for="periodo" class="form-label mb-2">Periodo</label>
+        <div class="input-group">
+            <select id="periodo" name="periodo" class="form-select" onchange="this.form.submit()">
+                <option value="giornaliero" {% if tipo == 'giornaliero' %}selected{% endif %}>Oggi</option>
+                <option value="settimanale" {% if tipo == 'settimanale' %}selected{% endif %}>Questa settimana</option>
+                <option value="mensile" {% if tipo == 'mensile' %}selected{% endif %}>Questo mese</option>
+            </select>
+        </div>
+    </form>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card h-100 shadow-sm border-0 bg-white">
+            <div class="card-body">
+                <div class="text-uppercase small fw-semibold text-secondary mb-2"><i class="bi bi-cash-coin me-1"></i>Totale entrate</div>
+                <div class="fs-2 fw-bold">€ {{ "%.2f"|format(stats.totale_periodo) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card h-100 shadow-sm border-0 bg-white">
+            <div class="card-body">
+                <div class="text-uppercase small fw-semibold text-secondary mb-2"><i class="bi bi-receipt me-1"></i>Vendite registrate</div>
+                <div class="fs-2 fw-bold">{{ stats.n_vendite }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card h-100 shadow-sm border-0 bg-white">
+            <div class="card-body">
+                <div class="text-uppercase small fw-semibold text-secondary mb-2"><i class="bi bi-box-seam me-1"></i>Articoli venduti</div>
+                <div class="fs-2 fw-bold">{{ stats.articoli_venduti }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card h-100 shadow-sm border-0 bg-white">
+            <div class="card-body">
+                <div class="text-uppercase small fw-semibold text-secondary mb-2"><i class="bi bi-graph-up me-1"></i>Scontrino medio</div>
+                <div class="fs-2 fw-bold">€ {{ "%.2f"|format(stats.ticket_medio) }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-12 col-xl-7">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white border-0 pb-0">
+                <h2 class="h5 mb-1"><i class="bi bi-trophy me-1 text-warning"></i>Prodotti più venduti</h2>
+                <p class="text-muted small mb-0">Classifica per quantità e fatturato generato.</p>
+            </div>
+            <div class="card-body">
+                {% if top_prodotti %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Prodotto</th>
+                                <th>Tipo</th>
+                                <th class="text-end">Quantità</th>
+                                <th class="text-end">Fatturato</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in top_prodotti %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td class="fw-medium">{{ p.nome }}</td>
+                                <td><span class="badge text-bg-secondary"><i class="bi bi-tag me-1"></i>{{ p.tipo }}</span></td>
+                                <td class="text-end">{{ p.tot_qty }}</td>
+                                <td class="text-end">€ {{ "%.2f"|format(p.tot_importo) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-light border mb-0">Nessuna vendita nel periodo selezionato.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-5">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white border-0 pb-0">
+                <h2 class="h5 mb-1"><i class="bi bi-pie-chart me-1 text-primary"></i>Ripartizione per tipo</h2>
+                <p class="text-muted small mb-0">Capire dove si concentra il fatturato aiuta a leggere il periodo oltre il totale.</p>
+            </div>
+            <div class="card-body">
+                {% if top_tipi %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tipo</th>
+                                <th class="text-end">Quantità</th>
+                                <th class="text-end">Fatturato</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in top_tipi %}
+                            <tr>
+                                <td class="fw-medium"><span class="badge text-bg-light border text-dark"><i class="bi bi-tag me-1"></i>{{ r.tipo }}</span></td>
+                                <td class="text-end">{{ r.quantita_venduta }}</td>
+                                <td class="text-end">€ {{ "%.2f"|format(r.fatturato) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-light border mb-0">Nessuna vendita per il periodo selezionato.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white border-0 pb-0">
+        <h2 class="h5 mb-1"><i class="bi bi-list-check me-1 text-success"></i>Dettaglio vendite</h2>
+        <p class="text-muted small mb-0">Ogni riga mostra anche il volume di pezzi complessivo per scontrino.</p>
+    </div>
+    <div class="card-body">
+        {% if vendite %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Data e ora</th>
+                        <th class="text-end">Righe</th>
+                        <th class="text-end">Pezzi</th>
+                        <th class="text-end">Totale</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in vendite %}
+                    <tr>
+                        <td class="fw-medium">{{ v.id }}</td>
+                        <td><i class="bi bi-clock me-1 text-secondary"></i>{{ v.data_ora.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td class="text-end">{{ v.n_righe }}</td>
+                        <td class="text-end">{{ v.quantita_totale }}</td>
+                        <td class="text-end fw-semibold">€ {{ "%.2f"|format(v.totale) }}</td>
+                        <td class="text-end"><a href="{{ url_for('vendite.ricevuta', id=v.id) }}" class="btn btn-sm btn-outline-dark"><i class="bi bi-receipt me-1"></i>Ricevuta</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-light border mb-0">Nessuna vendita nel periodo selezionato.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

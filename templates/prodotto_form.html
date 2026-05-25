@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} Prodotto – Edicola{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8 col-xl-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4 p-md-5">
+                <p class="text-uppercase small fw-semibold text-primary mb-2"><i class="bi bi-card-text me-1"></i>Catalogo</p>
+                <h1 class="mb-2">{{ action }} prodotto</h1>
+                <p class="text-muted mb-4">Compila i dati essenziali del prodotto. Il codice viene mantenuto o generato automaticamente.</p>
+
+                <form method="post" class="row g-3">
+                    <div class="col-12">
+                        <label for="codice" class="form-label">Codice prodotto</label>
+                        <input type="text" id="codice" name="codice" class="form-control" readonly maxlength="50"
+                               value="{{ prodotto.codice if prodotto else '(generato automaticamente)' }}">
+                        <div class="form-text"><i class="bi bi-info-circle me-1"></i>Formato: TIPO-DATA-ID (es. GIO-260522-0012)</div>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="nome" class="form-label">Nome del prodotto *</label>
+                        <input type="text" id="nome" name="nome" class="form-control" required maxlength="150"
+                               value="{{ prodotto.nome if prodotto else '' }}">
+                    </div>
+
+                    <div class="col-12">
+                        <label for="tipo" class="form-label">Tipo *</label>
+                        <input type="text" id="tipo" name="tipo" class="form-control" required maxlength="50"
+                               placeholder="es. Giornale, Rivista, Fumetto…"
+                               value="{{ prodotto.tipo if prodotto else '' }}"
+                               list="tipi-suggeriti">
+                        <datalist id="tipi-suggeriti">
+                            <option value="Giornale">
+                            <option value="Rivista">
+                            <option value="Fumetto">
+                            <option value="Libro">
+                            <option value="Snack">
+                            <option value="Altro">
+                        </datalist>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label for="prezzo" class="form-label">Prezzo (€) *</label>
+                        <input type="number" id="prezzo" name="prezzo" class="form-control" required min="0" step="0.01"
+                               value="{{ prodotto.prezzo if prodotto else '' }}">
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label for="quantita" class="form-label">Quantità in magazzino *</label>
+                        <input type="number" id="quantita" name="quantita" class="form-control" required min="0"
+                               value="{{ prodotto.quantita if prodotto else 0 }}">
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label for="soglia_minima" class="form-label">Soglia minima</label>
+                        <input type="number" id="soglia_minima" name="soglia_minima" class="form-control" min="0"
+                               value="{{ prodotto.soglia_minima if prodotto else 5 }}">
+                    </div>
+
+                    <div class="col-12 pt-2">
+                        <div class="d-flex gap-2 flex-wrap justify-content-end">
+                            <button type="submit" class="btn btn-dark"><i class="bi bi-check2-circle me-1"></i>{{ action }}</button>
+                            <a href="{{ url_for('prodotti.lista') }}" class="btn btn-outline-dark"><i class="bi bi-x-circle me-1"></i>Annulla</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
