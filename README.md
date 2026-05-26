@@ -88,7 +88,7 @@ Oppure (se preferisci specificare host/utente):
 psql -h $DATABASE_HOST -p $DATABASE_PORT -U $DATABASE_USER -d $DATABASE_NAME -f schema.sql
 ```
 
-4. Configura il file `.env` (usa `python-dotenv`). Crea un file `.env` a partire da un esempio ([.env.example](.env.example)) e imposta le variabili seguenti:
+4. Configura il file `.env` (usa `python-dotenv`). Crea un file `.env` a partire da un esempio ([.env.example](edicola/.env.example)) e imposta le variabili seguenti:
 
 ```env
 SECRET_KEY = your_secret_key_here
@@ -117,12 +117,12 @@ L'app sarà disponibile su http://localhost:5000
 
 ## Struttura del progetto
 
-- [app.py](app.py) — entrypoint Flask; registra i blueprint e route principali.
-- [config.py](config.py) — lettura variabili di ambiente e configurazioni.
-- [db.py](db.py) — layer di accesso al database (query parametrizzate, transazioni).
+- [app.py](edicola/app.py) — entrypoint Flask; registra i blueprint e route principali.
+- [config.py](edicola/config.py) — lettura variabili di ambiente e configurazioni.
+- [db.py](edicola/db.py) — layer di accesso al database (query parametrizzate, transazioni).
 - [schema.sql](schema.sql) — script per creare tabelle e indici.
-- [requirements.txt](requirements.txt) — dipendenze Python.
-- `routes/` — blueprint per le funzionalità (es. [routes/prodotti.py](routes/prodotti.py), [routes/vendite.py](routes/vendite.py), [routes/inventario.py](routes/inventario.py), [routes/report.py](routes/report.py)).
+- [requirements.txt](edicola/requirements.txt) — dipendenze Python.
+- `routes/` — blueprint per le funzionalità (es. [routes/prodotti.py](edicola/routes/prodotti.py), [routes/vendite.py](edicola/routes/vendite.py), [routes/inventario.py](edicola/routes/inventario.py), [routes/report.py](edicola/routes/report.py)).
 - `templates/` — template Jinja2 per le pagine.
 - `static/` — file statici (CSS, JS, immagini).
 
