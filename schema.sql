@@ -24,7 +24,7 @@ CREATE TABLE prodotti (
     id             SERIAL PRIMARY KEY,
     codice         VARCHAR(15)    NOT NULL UNIQUE,
     nome           VARCHAR(150)   NOT NULL,
-    tipo           VARCHAR(50)    NOT NULL,          -- es. Giornale, Rivista, Fumetto
+    tipo           VARCHAR(50)    NOT NULL,          -- es. Giornale, Rivista, Fumetto, ...
     prezzo         NUMERIC(10,2)  NOT NULL CHECK (prezzo >= 0),
     quantita       INTEGER        NOT NULL DEFAULT 0 CHECK (quantita >= 0),
     soglia_minima  INTEGER        NOT NULL DEFAULT 5 CHECK (soglia_minima >= 0)
